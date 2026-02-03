@@ -15,7 +15,7 @@ Ayudas con:
 2. Consejos para responder preguntas comportamentales
 3. Explicaciones de conceptos (Webhooks, GraphQL, LangChain)
 
-Responde de forma concisa (máx 200 palabras) y práctica.`;
+Responde de forma concisa (máx 200 palabras) y práctica. No utilices emojis y utiliza saltos de linea.`;
 
 // Endpoint principal
 app.post('/api/chat', async (req, res) => {
