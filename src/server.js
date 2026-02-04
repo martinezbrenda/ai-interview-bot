@@ -9,6 +9,8 @@ const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY
 });
 
+const sessions = {};
+
 const AGENT_CONTEXT = `Eres un experto Mentor de Carreras en IA especializado en procesos de selección técnica.
 Tu objetivo es actuar como un simulador de entrevistas de alta fidelidad.
 
@@ -54,58 +56,94 @@ RESTRICCIONES FORMALES:
 - Tono: Profesional, analítico y directo.`;
 
 
-// Endpoint principal
+// Endpoint principal (API)
 app.post('/api/chat', async (req, res) => {
   try {
     const { message, userId } = req.body;
-    if (!message) return res.status(400).json({ error: 'Message is required' });
+    const from = userId || 'default_user';
+
+    // Lógica de Reset
+    if (message && message.toLowerCase() === 'reset') {
+      delete sessions[from];
+      return res.json({ response: "🔄 Memoria reiniciada. ¿Cómo te puedo ayudar hoy? ¿Querés practicar o relajarte?" });
+    }
+
+    if (!sessions[from]) {
+      sessions[from] = [{ role: "system", content: AGENT_CONTEXT }];
+    }
+
+    sessions[from].push({ role: "user", content: message });
+
+    if (sessions[from].length > 7) {
+      sessions[from].splice(1, 2);
+    }
 
     const completion = await groq.chat.completions.create({
       model: "llama-3.3-70b-versatile",
-      messages: [
-        { role: "system", content: AGENT_CONTEXT },
-        { role: "user", content: message }
-      ],
+      messages: sessions[from],
       temperature: 0.7,
-      max_tokens: 300
+      max_tokens: 500 
     });
 
-    res.json({
-      success: true,
-      answer: completion.choices[0].message.content,
-      userId: userId,
-      timestamp: new Date().toISOString()
-    });
+    const aiResponse = completion.choices[0].message.content;
+    sessions[from].push({ role: "assistant", content: aiResponse });
+
+    res.json({ response: aiResponse });
+
   } catch (error) {
-    console.error('Error:', error.message);
-    res.status(500).json({ error: 'Error processing request' });
+    console.error('[API Error]:', error.message);
+    res.json({ response: "⚠️ Hubo un error procesando tu solicitud en /api/chat." });
   }
 });
 
-// Webhook endpoint (Corregido para usar GROQ)
+// Webhook para n8n
 app.post('/webhook/message', async (req, res) => {
   try {
     const { message, from } = req.body;
+
+    // Lógica de Reset
+    if (message && message.toLowerCase() === 'reset') {
+      delete sessions[from];
+      return res.json({ 
+        success: true, 
+        response: "🔄 Memoria reiniciada. ¿Cómo te puedo ayudar hoy? ¿Querés practicar o relajarte?",
+        to: from 
+      });
+    }
     
-    // Cambiado de openai a groq
+    if (!sessions[from]) {
+      sessions[from] = [{ role: "system", content: AGENT_CONTEXT }];
+    }
+
+    sessions[from].push({ role: "user", content: message });
+
+    if (sessions[from].length > 7) { 
+      sessions[from].splice(1, 2); 
+    }
+
     const completion = await groq.chat.completions.create({
       model: "llama-3.3-70b-versatile",
-      messages: [
-        { role: "system", content: AGENT_CONTEXT },
-        { role: "user", content: message }
-      ],
+      messages: sessions[from],
       temperature: 0.7,
       max_tokens: 300
     });
 
+    const aiResponse = completion.choices[0].message.content;
+    sessions[from].push({ role: "assistant", content: aiResponse });
+
     res.json({
       success: true,
-      response: completion.choices[0].message.content,
+      response: aiResponse,
       to: from
     });
+    
   } catch (error) {
-    console.error('[WEBHOOK] Error:', error.message);
-    res.status(500).json({ error: error.message });
+    console.error('[WEBHOOK Error]:', error.message);
+    res.json({ 
+      success: false, 
+      response: "⚠️ Ups, tuve un pequeño problema técnico. ¿Podés intentar de nuevo?",
+      to: from 
+    });
   }
 });
 
@@ -126,7 +164,13 @@ app.get('/api/random-question', (req, res) => {
   res.json({ question: random });
 });
 
+// Monitor de sesiones (Punto 3)
+setInterval(() => {
+  const activeSessions = Object.keys(sessions).length;
+  console.log(`📊 Sesiones activas en memoria: ${activeSessions}`);
+}, 600000); 
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`✅ Server running on http://localhost:${PORT}`);
+  console.log(`✅ Server running on port ${PORT}`);
 });
