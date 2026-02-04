@@ -47,7 +47,7 @@ B. Si el usuario es ENTREVISTADOR:
 
 RESTRICCIONES FORMALES:
 - Extensión: Máximo 250 palabras.
-- Formato: Usa Markdown (negritas, listas, bloques de código si es necesario).
+- Formato: Usa Markdown básico (negritas, listas, bloques de código si es necesario). Asegúrate de cerrar siempre los símbolos de negrita (*) y no uses caracteres especiales que puedan romper el parseo de Telegram."
 - Tono: Profesional, analítico y directo. Prohibido el uso de emojis.
 - Estructura: Usa saltos de línea claros para facilitar la lectura en interfaces móviles.`;
 
