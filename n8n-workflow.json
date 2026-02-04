@@ -1,0 +1,220 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "interview-bot",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        -32
+      ],
+      "id": "ad633991-72c2-4268-9175-fd87155ff8cb",
+      "name": "Webhook",
+      "webhookId": "8760a5ff-8d3b-4c99-ab44-c7182194689b",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://ai-interview-bot-production.up.railway.app/webhook/message",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"message\": \"={{ $json.user_message }}\",\n  \"from\": \"={{ $json.user_name }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        656,
+        80
+      ],
+      "id": "c6303037-fd07-4f14-94ac-60aeb1fca4e5",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "BIEN!",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        976,
+        -32
+      ],
+      "id": "44dd6846-e0cb-44ee-bc05-e18df697eb65",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        192
+      ],
+      "id": "d52d8f59-5f05-47e8-89ce-5123db16028f",
+      "name": "Telegram Trigger",
+      "webhookId": "541d464c-295a-496f-b435-3c5fe7447ea6",
+      "credentials": {
+        "telegramApi": {
+          "id": "5iiz1TkzelFDSBWM",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "04c61993-4347-40a5-8b04-3d43539f6b5f",
+              "name": "user_message",
+              "value": "=={{ $json.message?.text || $json.body?.message }}",
+              "type": "string"
+            },
+            {
+              "id": "f48ef224-2f77-4d46-8546-8f790c21215a",
+              "name": "user_name",
+              "value": "=={{ $json.message?.from?.first_name || $json.body?.from || 'User' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        352,
+        80
+      ],
+      "id": "5583436c-9788-4f9f-a0a5-a2d3cdafc185",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $(\"Telegram Trigger\").first().json.message.chat.id }}",
+        "text": "={{ $json.response }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        976,
+        208
+      ],
+      "id": "f8b7b677-8088-4cb0-a105-540bfced101b",
+      "name": "Send a text message",
+      "webhookId": "adc72a16-0f3b-44d4-ac98-ce6ec4342326",
+      "credentials": {
+        "telegramApi": {
+          "id": "5iiz1TkzelFDSBWM",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {
+    "Webhook": [
+      {
+        "headers": {
+          "host": "martinezbrenda.app.n8n.cloud",
+          "user-agent": "curl/8.7.1",
+          "content-length": "85",
+          "accept": "*/*",
+          "accept-encoding": "gzip, br",
+          "cdn-loop": "cloudflare; loops=1; subreqs=1",
+          "cf-connecting-ip": "193.204.189.11",
+          "cf-ew-via": "15",
+          "cf-ipcountry": "IT",
+          "cf-ray": "9c821bf31427e889-FCO",
+          "cf-visitor": "{\"scheme\":\"https\"}",
+          "cf-worker": "n8n.cloud",
+          "content-type": "application/json",
+          "x-forwarded-for": "193.204.189.11, 162.158.116.12",
+          "x-forwarded-host": "martinezbrenda.app.n8n.cloud",
+          "x-forwarded-port": "443",
+          "x-forwarded-proto": "https",
+          "x-forwarded-server": "traefik-prod-users-gwc-30-6d57d45df-ngfj2",
+          "x-is-trusted": "yes",
+          "x-real-ip": "193.204.189.11"
+        },
+        "params": {},
+        "query": {},
+        "body": {
+          "message": "Dame 3 preguntas técnicas sobre Node.js",
+          "from": "brenda"
+        },
+        "webhookUrl": "https://martinezbrenda.app.n8n.cloud/webhook/interview-bot",
+        "executionMode": "production"
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "913997f50873309baf349fae25ed6e76c3b64d8e8847d7f56d7eeabffa1aab8e"
+  }
+}
