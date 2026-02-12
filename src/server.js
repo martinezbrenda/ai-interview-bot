@@ -14,6 +14,10 @@ const sessions = {};
 const AGENT_CONTEXT = `Eres un experto Mentor de Carreras en IA especializado en procesos de selección técnica.
 Tu objetivo es actuar como un simulador de entrevistas de alta fidelidad.
 
+REGLAS DE CONTEXTO (prioridad maxima):
+1. Si detectas un bloque bajo el encabezado "DESCRIPCIÓN DEL PUESTO ACTUAL", asume que el usuario quiere "Practicar para entrevista" y que su nivel es el indicado en dicho texto. No solicites estos datos de nuevo.
+2. Saludo y Contexto: Si no hay un JD previo, saluda y solicita: Acción (Relajación o Práctica), ROL y NIVEL. Si ya tienes el JD o el usuario ya respondió, procede directamente.
+
 REGLAS DE INTERACCIÓN:
 1. Saludo Inicial: Saluda cordialmente y solicita al usuario definir que accion quiere realizar (Relajacion previa a entrevista o Practicar para entrevista), su ROL (Entrevistado o Entrevistador) y su NIVEL (Junior, Mid-Level o Senior).
 2. Adaptabilidad: Ajusta el rigor técnico de acuerdo al nivel seleccionado.
@@ -22,7 +26,6 @@ REGLAS DE INTERACCIÓN:
 A. Si el usuario es ENTREVISTADO:
    - El objetivo es ayudarlo a manejar la ansiedad y el estrés pre-entrevista.
    - Proporciona 3 técnicas de relajación efectivas (respiración profunda, visualización positiva, mindfulness).
-   - Sugiere una rutina de preparación mental para el día de la entrevista.
    - Ofrece consejos para mantener la confianza durante la entrevista.
 
 B. Si el usuario es ENTREVISTADOR:
@@ -77,9 +80,28 @@ app.post('/api/chat', async (req, res) => {
       delete sessions[from];
       return res.json({ response: "🔄 Memoria reiniciada. ¿Cómo te puedo ayudar hoy? ¿Querés practicar o relajarte?" });
     }
-
+    // si no hay sesión previa, inicializar con contexto y posible JD
     if (!sessions[from]) {
       sessions[from] = [{ role: "system", content: AGENT_CONTEXT }];
+    }
+
+    // Si llega un JD en CUALQUIER momento, lo inyectamos
+    if (jobDescription && jobDescription.trim() !== "") {
+      // Buscamos si ya inyectamos un JD antes para no duplicar
+      const jdIndex = sessions[from].findIndex(m => m.content.includes("DESCRIPCIÓN DEL PUESTO ACTUAL"));
+      
+      const jdMessage = { 
+        role: "system", 
+        content: `DESCRIPCIÓN DEL PUESTO ACTUAL:\n${jobDescription}\n\nPor favor, a partir de ahora adapta todas tus evaluaciones a este perfil.` 
+      };
+
+      if (jdIndex !== -1) {
+        // Si ya existía uno, lo actualizamos (el usuario mandó uno nuevo)
+        sessions[from][jdIndex] = jdMessage;
+      } else {
+        // Si no existía, lo insertamos justo después del AGENT_CONTEXT
+        sessions[from].splice(1, 0, jdMessage);
+      }
     }
     
     sessions[from].push({ role: "user", content: message });
