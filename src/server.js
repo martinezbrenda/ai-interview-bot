@@ -87,19 +87,19 @@ app.post('/api/chat', async (req, res) => {
 
     // Si llega un JD en CUALQUIER momento, lo inyectamos
     if (jobDescription && jobDescription.trim() !== "") {
-      // Buscamos si ya inyectamos un JD antes para no duplicar
-      const jdIndex = sessions[from].findIndex(m => m.content.includes("DESCRIPCIÓN DEL PUESTO ACTUAL"));
-      
       const jdMessage = { 
         role: "system", 
-        content: `DESCRIPCIÓN DEL PUESTO ACTUAL:\n${jobDescription}\n\nPor favor, a partir de ahora adapta todas tus evaluaciones a este perfil.` 
+        content: `CONTEXTO CRÍTICO: El usuario ha proporcionado una DESCRIPCIÓN DEL PUESTO ACTUAL. 
+        A partir de este momento, ASUME que la acción es "Practicar para entrevista", 
+        el ROL es "Entrevistado" y el NIVEL es el que figure en el texto (o Junior si no especifica). 
+        NO solicites estos datos. Procede directamente con la simulación técnica basada en:
+        ${jobDescription}` 
       };
 
+      const jdIndex = sessions[from].findIndex(m => m.content.includes("DESCRIPCIÓN DEL PUESTO ACTUAL"));
       if (jdIndex !== -1) {
-        // Si ya existía uno, lo actualizamos (el usuario mandó uno nuevo)
         sessions[from][jdIndex] = jdMessage;
       } else {
-        // Si no existía, lo insertamos justo después del AGENT_CONTEXT
         sessions[from].splice(1, 0, jdMessage);
       }
     }
