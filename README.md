@@ -7,9 +7,11 @@ Sistema integral de preparación para entrevistas técnicas de **AI Engineer**. 
 El propósito de este sistema es demostrar la capacidad de **integración end-to-end** de un ecosistema moderno de IA, resolviendo retos comunes en el desarrollo de agentes inteligentes:
 
 * **Desarrollo Backend:** Implementación de una **API RESTful** robusta utilizando **Node.js** y **Express**.
+* **Contextual AI Anchor:** Capacidad de analizar **Job Descriptions** externos para personalizar el entrenamiento.
 * **Prompt Engineering Avanzado:** Diseño de un agente con lógica bimodal y adaptabilidad de contexto mediante el SDK de **Groq** (Llama 3.3 70B).
 * **Sincronización de Sistemas:** Recepción, validación y procesamiento de **Webhooks** en tiempo real.
 * **Orquestación No-Code:** Automatización de flujos de trabajo complejos y conexión de servicios externos con **n8n**.
+* **Resiliencia:** Manejo de errores y degradación elegante del servicio ante fallos de infraestructura.
 * **Ciclo de Vida de Software (SDLC):** Gestión de versiones con **Git/GitHub** y despliegue continuo (CI/CD) en la nube mediante **Railway**.
 
 ## 🏗️ Arquitectura y Flujo de Ejecución
@@ -19,15 +21,36 @@ El sistema opera bajo un modelo de microservicios desacoplados para garantizar e
 **Diagrama de Flujo:**
 `Usuario (Telegram) → n8n Orquestador (Webhook) → Backend (Express API) → IA (Groq LLM) → Respuesta Estructurada (JSON)`
 
-### Paso a paso del flujo de datos:
+### Pipeline de ejecución:
 
-1. **Entrada de Usuario:** El usuario interactúa con el bot de Telegram, lo que dispara un evento hacia el **Webhook de n8n**.
-2. **Orquestación:** n8n recibe los datos, los normaliza y realiza una petición `POST` al endpoint `/webhook/message` de nuestro servidor en **Express**.
-3. **Procesamiento de IA:** El servidor en **Railway** recibe el mensaje, aplica el **System Prompt** configurado y consulta al modelo **Llama 3.3 70B** a través del SDK de **Groq**.
-4. **Generación de Respuesta:** Groq procesa la intención y devuelve una respuesta contextual basada en el rol (Entrevistado/Entrevistador) y nivel de seniority.
-5. **Cierre del Ciclo:** Express retorna la respuesta en formato JSON a n8n, que finalmente entrega el mensaje al usuario en Telegram.
+1. **Ingesta**: El usuario envía texto o un archivo `.txt` vía Telegram.
+2. **ETL en el Edge (n8n)**: El orquestador extrae el contenido binario y lo transforma en un string estructurado.
+3. **Inyección de Contexto**: El backend en **Railway** recibe el mensaje y la **Job Description**, anclándolos como prioridad en la memoria de la sesión.
+4. **Inferencia de IA**: Se consulta al modelo **Llama 3.3 70B** vía **Groq SDK** aplicando un **System Prompt** bimodal.
+5. **Entrega Multiformato**: El nodo **Code** en n8n detecta el cliente (Telegram o Terminal) y aplica formato HTML o secuencias **ANSI** respectivamente.
 
----
+## 🧠 Gestión de Memoria y Estados (Stateful AI)
+
+A diferencia de implementaciones *stateless*, este bot mantiene la coherencia mediante:
+
+* **Session Management**: Gestión de objetos de sesión indexados por `userId` en memoria volátil.
+* **Sliding Window Memory**: Ventana deslizante que preserva el **System Prompt** y la **Job Description**, eliminando turnos intermedios para optimizar la ventana de contexto (128k tokens).
+* **Reset Logic**: Endpoint dedicado para la limpieza síncrona de estados.
+
+## 🚀 Funcionalidades Principales
+
+### 1. Preparación Bimodal
+
+* **Modo Relajación**: Técnicas de mindfulness y preparación psicológica pre-entrevista.
+* **Modo Práctica**: Simulacros técnicos con detección de "humo" y validación de conceptos clave (Webhooks, GraphQL, LangChain).
+
+### 2. Análisis Dinámico de JDs
+
+El backend permite inyectar descriptivos de puesto para:
+
+* Generar preguntas de validación crítica basadas en el stack real de la empresa.
+* Identificar brechas de conocimiento específicas para el candidato.
+
 
 ## 🧠 Lógica del Agente (Prompt Engineering)
 
@@ -73,6 +96,7 @@ PORT=3000
 ## 🧪 Endpoints Principales
 
 * `POST /webhook/message`: Punto de entrada principal para n8n. Gestiona el procesamiento de mensajes mediante el SDK de Groq.
+* POST /api/chat: Interfaz programática para inyección de JDs y mensajes.
 * `GET /health`: Monitoreo del estado del servicio y latencia.
 
 ---

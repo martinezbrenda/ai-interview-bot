@@ -33,7 +33,7 @@ B. Si el usuario es ENTREVISTADOR:
 
 2. Si el usuario elige "Practicar para entrevista":
 A. Si el usuario es ENTREVISTADO:
-   - El objetivo es ayudarlo a prepararse para preguntas técnicas y comportamentales. Ademas, a manejar la ansiedad de la entrevista.
+   - El objetivo es ayudarlo a prepararse para preguntas técnicas y comportamentales. Solicitar el job description del puesto al que quiere aplicar. Basate en el job description que te proporciono para adaptar las preguntas. Si no te proporciono un job description, haz preguntas generales de acuerdo al nivel de seniority seleccionado.
    - Lista 3 preguntas que verifiquen su nivel de seniority (Junior/Mid/Senior).
    - Menciona 3 conceptos clave que el candidato debe saber para ese nivel de seniority (Webhooks, GraphQL, LangChain).
    - Genera dos preguntas comportamental.
@@ -55,14 +55,24 @@ RESTRICCIONES FORMALES:
 - Asegúrate de cerrar siempre las etiquetas HTML (ej: <b>texto</b>).
 - Tono: Profesional, analítico y directo.`;
 
+// Función auxiliar para inicializar sesión con JD
+const initializeSession = (from, jobDescription) => {
+  sessions[from] = [{ role: "system", content: AGENT_CONTEXT }];
+  if (jobDescription) {
+    sessions[from].push({ 
+      role: "system", 
+      content: `DESCRIPCIÓN DEL PUESTO ACTUAL:\n${jobDescription}\n\nAdapta tus evaluaciones a este perfil de forma prioritaria.` 
+    });
+  }
+};
 
 // Endpoint principal (API)
 app.post('/api/chat', async (req, res) => {
   try {
-    const { message, userId } = req.body;
+    const { message, userId, jobDescription } = req.body;
     const from = userId || 'default_user';
 
-    // Lógica de Reset
+    // logica de reset
     if (message && message.toLowerCase() === 'reset') {
       delete sessions[from];
       return res.json({ response: "🔄 Memoria reiniciada. ¿Cómo te puedo ayudar hoy? ¿Querés practicar o relajarte?" });
@@ -71,11 +81,11 @@ app.post('/api/chat', async (req, res) => {
     if (!sessions[from]) {
       sessions[from] = [{ role: "system", content: AGENT_CONTEXT }];
     }
-
+    
     sessions[from].push({ role: "user", content: message });
 
-    if (sessions[from].length > 7) {
-      sessions[from].splice(1, 2);
+    if (sessions[from].length > 10) {
+      sessions[from].splice(sessions[from][1].content.includes("DESCRIPCIÓN") ? 2 : 1, 2);
     }
 
     const completion = await groq.chat.completions.create({
@@ -99,7 +109,7 @@ app.post('/api/chat', async (req, res) => {
 // Webhook para n8n
 app.post('/webhook/message', async (req, res) => {
   try {
-    const { message, from } = req.body;
+    const { message, from, jobDescription } = req.body;
 
     // Lógica de Reset
     if (message && message.toLowerCase() === 'reset') {
@@ -112,13 +122,13 @@ app.post('/webhook/message', async (req, res) => {
     }
     
     if (!sessions[from]) {
-      sessions[from] = [{ role: "system", content: AGENT_CONTEXT }];
+      initializeSession(from, jobDescription);
     }
 
     sessions[from].push({ role: "user", content: message });
 
-    if (sessions[from].length > 7) { 
-      sessions[from].splice(1, 2); 
+    if (sessions[from].length > 10) {
+      sessions[from].splice(sessions[from][1].content.includes("DESCRIPCIÓN") ? 2 : 1, 2);
     }
 
     const completion = await groq.chat.completions.create({
